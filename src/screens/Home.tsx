@@ -1,9 +1,10 @@
+import {useIsFocused} from '@react-navigation/native';
 import moment, {MomentInput} from 'moment';
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import {
+  AppState,
   Dimensions,
   ImageBackground,
-  Linking,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -25,6 +26,8 @@ import {getCityFromLocation} from '../utils/location';
 import {fillWeatherData, getCuacaBMKG} from '../utils/weather';
 
 const Home = () => {
+  const isFocused = useIsFocused();
+  const appState = useRef(AppState.currentState);
   const [today, _] = useState(moment().format('YYYY-MM-DD'));
   const [currentCity, setCurrentCity] = useState('-');
   const [currentCityId, setCurrentCityId] = useState(1301);
@@ -38,7 +41,6 @@ const Home = () => {
 
   const fetchJadwalSholat = async () => {
     try {
-      setLoading(true);
       const response = await fetch(
         `https://api.myquran.com/v2/sholat/jadwal/${currentCityId}/${today}`,
       );
@@ -62,14 +64,12 @@ const Home = () => {
           return updatedItem;
         }),
       );
-      setLoading(false);
     } catch (error) {
-      setLoading(false);
+      console.error(error);
     }
   };
   const findCity = async (keyword: string) => {
     try {
-      setLoading(true);
       const response = await fetch(
         `https://api.myquran.com/v2/sholat/kota/cari/${keyword}`,
       );
@@ -80,10 +80,8 @@ const Home = () => {
       if (res.data.length > 0) {
         return res.data[0];
       }
-
-      setLoading(false);
     } catch (error) {
-      setLoading(false);
+      console.error(error);
     }
   };
 
@@ -109,11 +107,40 @@ const Home = () => {
   };
 
   useEffect(() => {
-    refresh();
+    if (isFocused) {
+      setLoading(true);
+      refresh().finally(() => {
+        setLoading(false);
+      });
+    }
+  }, [isFocused]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', nextAppState => {
+      if (
+        appState.current.match(/inactive|background/) &&
+        nextAppState === 'active'
+      ) {
+        setLoading(true);
+        refresh().finally(() => {
+          setLoading(false);
+        });
+      }
+
+      appState.current = nextAppState;
+      console.log('AppState', appState.current);
+    });
+
+    return () => {
+      subscription.remove();
+    };
   }, []);
 
   useEffect(() => {
-    fetchJadwalSholat();
+    setLoading(true);
+    fetchJadwalSholat().finally(() => {
+      setLoading(false);
+    });
   }, [today, currentCityId]);
 
   return (
@@ -134,7 +161,7 @@ const Home = () => {
         <ScrollView
           contentContainerStyle={styles.contentContainer}
           refreshControl={
-            <RefreshControl refreshing={false} onRefresh={refresh} />
+            <RefreshControl refreshing={loading} onRefresh={refresh} />
           }>
           <View center width={'100%'} height={300}>
             <View flex center>
@@ -197,12 +224,7 @@ const Home = () => {
         visible={showAboutModal}
         onDismiss={() => setShowAboutModal(false)}
         panDirection={PanningProvider.Directions.DOWN}
-        containerStyle={{
-          backgroundColor: Colors.$backgroundDefault,
-          marginBottom: Constants.isIphoneX ? 0 : 20,
-          borderRadius: 12,
-          padding: 16,
-        }}
+        containerStyle={styles.modalContainer}
         height={300}>
         <View marginB-16>
           <Text text60>About</Text>
@@ -256,5 +278,11 @@ const styles = StyleSheet.create({
   creditText: {
     color: '#fff',
     fontSize: 12,
+  },
+  modalContainer: {
+    backgroundColor: Colors.$backgroundDefault,
+    marginBottom: Constants.isIphoneX ? 0 : 20,
+    borderRadius: 12,
+    padding: 16,
   },
 });
