@@ -1,4 +1,4 @@
-package com.imsak
+package com.rfahmi.imsak
 
 import android.app.Application
 import com.facebook.react.PackageList

@@ -1,4 +1,4 @@
-package com.imsak
+package com.rfahmi.imsak
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
