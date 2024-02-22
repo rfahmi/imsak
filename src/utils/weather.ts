@@ -1,29 +1,53 @@
-export const getCuacaBMKG = async (provinceName: string) => {
-  const url = `https://data.bmkg.go.id/DataMKG/MEWS/DigitalForecast/DigitalForecast-Indonesia.xml?provinsi=${provinceName}`;
+import {searchKeyword} from './string';
 
-  const response = await fetch(url);
+export const getCuacaBMKG = async (cityName: string, provinceName: string) => {
+  const url = `https://data.bmkg.go.id/DataMKG/MEWS/DigitalForecast/DigitalForecast-${provinceName.replace(
+    ' ',
+    '',
+  )}.xml`;
 
-  // Check for successful response
+  let response;
+  try {
+    response = await fetch(url);
+  } catch (error) {
+    throw new Error(`Failed to fetch data: ${error}`);
+  }
+
   if (!response.ok) {
     throw new Error(`Network response was not ok: ${response.status}`);
   }
 
-  // Parse XML using a dedicated library (e.g., xml2js)
   const xml2js = require('xml2js');
   const parser = new xml2js.Parser();
-  const xmlData = await response.text();
+  let jsonData;
+  try {
+    const xmlData = await response.text();
+    jsonData = await parser.parseStringPromise(xmlData);
+  } catch (error) {
+    throw new Error(`Failed to parse XML data: ${error}`);
+  }
 
-  // Convert parsed XML to JSON
-  const jsonData = await parser.parseStringPromise(xmlData);
+  if (!jsonData?.data?.forecast?.length) {
+    throw new Error('No forecast data available');
+  }
 
-  console.log('JSON Data:', jsonData);
+  const areaData = jsonData.data.forecast[0].area.find(i =>
+    searchKeyword(cityName, i.name[0]._),
+  );
 
-  // Extract relevant data from the parsed JSON
-  const prakiraanCuaca = jsonData.data.forecast[0].area
-    .find(i => i.$.description === provinceName)
-    .parameter.find(i => i.$.id === 'weather').timerange;
+  // console.log('area', jsonData.data.forecast[0].area);
+  // jsonData.data.forecast[0].area.map(i => console.log(i.name[0]._));
 
-  const result = prakiraanCuaca.map(i => {
+  if (!areaData) {
+    throw new Error(`No area data found for ${cityName}`);
+  }
+
+  const weatherData = areaData.parameter.find(i => i.$.id === 'weather');
+  if (!weatherData || !weatherData.timerange) {
+    throw new Error(`No weather data found for ${cityName}`);
+  }
+
+  const result = weatherData.timerange.map(i => {
     return {
       hour: i.$.h,
       weather: getWeatherDescription(Number(i.value[0]._)),
@@ -36,34 +60,34 @@ export const getCuacaBMKG = async (provinceName: string) => {
 export const getWeatherDescription = (code: number) => {
   switch (code) {
     case 0:
-      return 'Cerah';
+      return {icon: 'weather-sunny', desc: 'Cerah'};
     case 1:
-      return 'Cerah Berawan';
+      return {icon: 'weather-partly-cloudy', desc: 'Cerah Berawan'};
     case 2:
-      return 'Cerah Berawan';
+      return {icon: 'weather-partly-cloudy', desc: 'Cerah Berawan'};
     case 3:
-      return 'Berawan';
+      return {icon: 'weather-cloudy', desc: 'Berawan'};
     case 4:
-      return 'Berawan Tebal';
+      return {icon: 'weather-cloudy-alert', desc: 'Berawan Tebal'};
     case 5:
-      return 'Udara Kabur';
+      return {icon: 'weather-sunny', desc: 'Udara Kabur'};
     case 10:
-      return 'Asap';
+      return {icon: 'weather-fog', desc: 'Asap'};
     case 45:
-      return 'Kabut';
+      return {icon: 'weather-fog', desc: 'Kabut'};
     case 60:
-      return 'Hujan Ringan';
+      return {icon: 'weather-hail', desc: 'Hujan Ringan'};
     case 61:
-      return 'Hujan Sedang';
+      return {icon: 'weather-rainy', desc: 'Hujan Sedang'};
     case 63:
-      return 'Hujan Lebat';
+      return {icon: 'weather-pouring', desc: 'Hujan Lebat'};
     case 80:
-      return 'Hujan Lokal';
+      return {icon: 'weather-pouring', desc: 'Hujan Lokal'};
     case 95:
     case 97:
-      return 'Hujan Petir';
+      return {icon: 'weather-lightning-rainy', desc: 'Hujan Petir'};
     default:
-      return 'Unknown';
+      return {icon: 'cloud-question', desc: 'Unknown'};
   }
 };
 

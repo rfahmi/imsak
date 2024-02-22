@@ -1,15 +1,15 @@
 import {useIsFocused} from '@react-navigation/native';
 import moment, {MomentInput} from 'moment';
-import React, {useEffect, useRef, useState} from 'react';
+import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {
   AppState,
   Dimensions,
   ImageBackground,
+  RefreshControl,
   ScrollView,
   StatusBar,
   StyleSheet,
 } from 'react-native';
-import {RefreshControl} from 'react-native-gesture-handler';
 import {
   Colors,
   Constants,
@@ -24,6 +24,8 @@ import {JadwalSholatResponse} from '../types/global.type';
 import {DATA_INIT} from '../utils/consts';
 import {getCityFromLocation} from '../utils/location';
 import {fillWeatherData, getCuacaBMKG} from '../utils/weather';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 const Home = () => {
   const isFocused = useIsFocused();
@@ -31,15 +33,15 @@ const Home = () => {
   const [today, _] = useState(moment().format('YYYY-MM-DD'));
   const [currentCity, setCurrentCity] = useState('-');
   const [currentCityId, setCurrentCityId] = useState(1301);
-
   const [todayString, setTodayString] = useState('-');
   const [data, setData] = useState(DATA_INIT);
   const [loading, setLoading] = useState(false);
-  const [imsak, setimsak] = useState<MomentInput>();
+  const [imsak, setImsak] = useState<MomentInput>();
   const [maghrib, setMaghrib] = useState<MomentInput>();
-  const [showAboutModal, setShowAboutModal] = useState<boolean>(false);
+  const [showAboutModal, setShowAboutModal] = useState(false);
 
-  const fetchJadwalSholat = async () => {
+  const fetchJadwalSholat = useCallback(async () => {
+    const cacheKey = `jadwalSholat-${currentCityId}-${today}`;
     try {
       const response = await fetch(
         `https://api.myquran.com/v2/sholat/jadwal/${currentCityId}/${today}`,
@@ -49,27 +51,26 @@ const Home = () => {
       }
       const res: JadwalSholatResponse = await response.json();
       const jadwal = res.data.jadwal;
-      setTodayString(jadwal.tanggal);
-      setimsak(moment(res.data.jadwal.imsak, 'HH:mm').toISOString());
-      setMaghrib(moment(res.data.jadwal.maghrib, 'HH:mm').toISOString());
 
-      setData(
-        data.map(i => {
-          const updatedItem = {...i};
-          Object.keys(jadwal).forEach(key => {
-            if (i.label === key) {
-              updatedItem.time = jadwal[key];
-            }
-          });
-          return updatedItem;
-        }),
-      );
+      setTodayString(jadwal.tanggal);
+      setImsak(moment(jadwal.imsak, 'HH:mm').toISOString());
+      setMaghrib(moment(jadwal.maghrib, 'HH:mm').toISOString());
+      const newData = data.map(i => ({...i, time: jadwal[i.label]}));
+      AsyncStorage.setItem(cacheKey, JSON.stringify(newData));
+      setData(newData);
     } catch (error) {
       console.error(error);
     }
-  };
-  const findCity = async (keyword: string) => {
+  }, [currentCityId, data, today]);
+
+  const findCity = useCallback(async (keyword: string) => {
+    const cacheKey = `citySearch-${keyword}`;
     try {
+      const cachedData = await AsyncStorage.getItem(cacheKey);
+      if (cachedData) {
+        return JSON.parse(cachedData);
+      }
+
       const response = await fetch(
         `https://api.myquran.com/v2/sholat/kota/cari/${keyword}`,
       );
@@ -78,42 +79,74 @@ const Home = () => {
       }
       const res: any = await response.json();
       if (res.data.length > 0) {
-        return res.data[0];
+        const cityData = res.data[0];
+        await AsyncStorage.setItem(cacheKey, JSON.stringify(cityData));
+        return cityData;
       }
     } catch (error) {
       console.error(error);
     }
-  };
+  }, []);
 
-  const getCurrentLocation = async () => {
-    const city = await getCityFromLocation();
-    if (city) {
-      setCurrentCity(city);
-      const citySplit = city.split(' ');
-      findCity(citySplit[0].toLocaleLowerCase()).then(e => {
-        setCurrentCityId(e.id);
-      });
-      const weather = await getCuacaBMKG('Medan');
-      console.log('weather', weather);
-      const newData = fillWeatherData(data, weather);
-      console.log('newData', newData);
-      setData(newData);
+  const getCurrentLocation = useCallback(async () => {
+    try {
+      const {city, county} = await getCityFromLocation();
+      if (city && county) {
+        console.log('CURRENT CITY', city, county);
+
+        setCurrentCity(city);
+        const citySplit = city.split(' ');
+        const cityData = await findCity(citySplit[0].toLocaleLowerCase());
+        setCurrentCityId(cityData.id);
+        let weather;
+        try {
+          weather = await getCuacaBMKG(city, county);
+        } catch {
+          try {
+            weather = await getCuacaBMKG(citySplit[0], county);
+          } catch (error) {
+            console.error(error);
+          }
+        }
+        const newData = fillWeatherData(data, weather);
+        setData(newData);
+      }
+    } catch (error) {
+      console.error(error);
     }
-  };
+  }, [data, findCity]);
 
-  const refresh = async () => {
-    getCurrentLocation();
-    fetchJadwalSholat();
-  };
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    await Promise.all([getCurrentLocation(), fetchJadwalSholat()]);
+    setLoading(false);
+  }, []);
 
   useEffect(() => {
     if (isFocused) {
       setLoading(true);
-      refresh().finally(() => {
-        setLoading(false);
-      });
+      refresh().finally(() => setLoading(false));
     }
-  }, [isFocused]);
+  }, [isFocused, refresh]);
+
+  useEffect(() => {
+    const initializeData = async () => {
+      const cacheKey = `jadwalSholat-${currentCityId}-${today}`;
+      try {
+        const storedData = await AsyncStorage.getItem(cacheKey);
+        if (storedData) {
+          const parsedJson = JSON.parse(storedData);
+          console.log('Initial data loaded from cache:', parsedJson);
+
+          setData(parsedJson);
+        }
+      } catch (error) {
+        console.error('Failed to load initial data:', error);
+      }
+    };
+
+    initializeData();
+  }, [currentCityId, today]);
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', nextAppState => {
@@ -122,26 +155,15 @@ const Home = () => {
         nextAppState === 'active'
       ) {
         setLoading(true);
-        refresh().finally(() => {
-          setLoading(false);
-        });
+        refresh().finally(() => setLoading(false));
       }
-
       appState.current = nextAppState;
-      console.log('AppState', appState.current);
     });
 
     return () => {
       subscription.remove();
     };
-  }, []);
-
-  useEffect(() => {
-    setLoading(true);
-    fetchJadwalSholat().finally(() => {
-      setLoading(false);
-    });
-  }, [today, currentCityId]);
+  }, [refresh]);
 
   return (
     <View>
@@ -166,26 +188,47 @@ const Home = () => {
           <View center width={'100%'} height={300}>
             <View flex center>
               <View margin-16 center>
-                <Text text60BO black>
-                  {currentCity}
-                </Text>
+                <View row center gap-8>
+                  <Icon
+                    name="navigation-variant"
+                    size={18}
+                    color={Colors.grey20}
+                  />
+                  <Text text60BO black>
+                    {currentCity}
+                  </Text>
+                </View>
                 <Text text80L black>
                   {todayString}
                 </Text>
               </View>
               <View flex row>
                 <View flex center>
-                  <Text text70L black>
-                    Imsak
-                  </Text>
+                  <View row center gap-8>
+                    <Icon
+                      name="weather-sunset-up"
+                      size={18}
+                      color={Colors.grey20}
+                    />
+                    <Text text70L black>
+                      Imsak
+                    </Text>
+                  </View>
                   <Text text30L black>
                     {moment(imsak).format('HH:mm')}
                   </Text>
                 </View>
                 <View flex center>
-                  <Text text70L black>
-                    Buka Puasa
-                  </Text>
+                  <View row center gap-8>
+                    <Icon
+                      name="weather-sunset-down"
+                      size={18}
+                      color={Colors.grey20}
+                    />
+                    <Text text70L black>
+                      Buka Puasa
+                    </Text>
+                  </View>
                   <Text text30L black>
                     {moment(maghrib).format('HH:mm')}
                   </Text>
@@ -271,7 +314,6 @@ const styles = StyleSheet.create({
     padding: 10,
     height: 48,
     backgroundColor: 'transparent',
-    borderTopWidth: StyleSheet.hairlineWidth,
     alignItems: 'center',
     justifyContent: 'center',
   },
