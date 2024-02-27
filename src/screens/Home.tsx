@@ -3,6 +3,7 @@ import moment, {MomentInput} from 'moment';
 import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {
   AppState,
+  BackHandler,
   Dimensions,
   ImageBackground,
   RefreshControl,
@@ -39,6 +40,7 @@ const Home = () => {
   const [imsak, setImsak] = useState<MomentInput>();
   const [maghrib, setMaghrib] = useState<MomentInput>();
   const [showAboutModal, setShowAboutModal] = useState(false);
+  const [showAlertModal, setShowAlertModal] = useState(false);
 
   const fetchJadwalSholat = useCallback(async () => {
     const cacheKey = `jadwalSholat-${currentCityId}-${today}`;
@@ -90,26 +92,30 @@ const Home = () => {
 
   const getCurrentLocation = useCallback(async () => {
     try {
-      const {city, county} = await getCityFromLocation();
-      if (city && county) {
-        console.log('CURRENT CITY', city, county);
+      const {city, county, countryCode} = await getCityFromLocation();
+      if (countryCode === 'IDN') {
+        if (city && county) {
+          console.log('CURRENT CITY', city, county);
 
-        setCurrentCity(city);
-        const citySplit = city.split(' ');
-        const cityData = await findCity(citySplit[0].toLocaleLowerCase());
-        setCurrentCityId(cityData.id);
-        let weather;
-        try {
-          weather = await getCuacaBMKG(city, county);
-        } catch {
+          setCurrentCity(city);
+          const citySplit = city.split(' ');
+          const cityData = await findCity(citySplit[0].toLocaleLowerCase());
+          setCurrentCityId(cityData.id);
+          let weather;
           try {
-            weather = await getCuacaBMKG(citySplit[0], county);
-          } catch (error) {
-            console.error(error);
+            weather = await getCuacaBMKG(city, county);
+          } catch {
+            try {
+              weather = await getCuacaBMKG(citySplit[0], county);
+            } catch (error) {
+              console.error(error);
+            }
           }
+          const newData = fillWeatherData(data, weather);
+          setData(newData);
         }
-        const newData = fillWeatherData(data, weather);
-        setData(newData);
+      } else {
+        setShowAlertModal(true);
       }
     } catch (error) {
       console.error(error);
@@ -283,6 +289,19 @@ const Home = () => {
           <Text text80>Data Cuaca:</Text>
           <Text text80L>
             BMKG (Badan Meteorologi, Klimatologi, dan Geofisika)
+          </Text>
+        </View>
+      </Dialog>
+      <Dialog
+        visible={showAlertModal}
+        onDismiss={() => BackHandler.exitApp()}
+        panDirection={PanningProvider.Directions.DOWN}
+        containerStyle={styles.modalContainer}>
+        <View marginB-16>
+          <Text text60>Area tidak didukung</Text>
+          <Text text80L>
+            Saat ini aplikasi hanya berfungsi di wilayah indonesia karena
+            keterbatasan data cuaca dan jadwal sholat
           </Text>
         </View>
       </Dialog>

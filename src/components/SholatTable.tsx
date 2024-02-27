@@ -9,8 +9,6 @@ interface SholatTableProps {
 }
 
 const SholatTable: React.FC<SholatTableProps> = ({data}) => {
-  console.log('DATAA', data);
-
   return (
     <Card
       marginT-20

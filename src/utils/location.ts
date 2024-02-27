@@ -3,6 +3,7 @@ import Geolocation from '@react-native-community/geolocation';
 interface AddressComponent {
   city: string;
   county: string;
+  countryCode: string;
 }
 
 interface GeocodingResponse {
@@ -25,11 +26,9 @@ export const getCityFromLocation = (): Promise<AddressComponent> => {
           .then(response => response.json())
           .then((data: GeocodingResponse) => {
             if (data.items.length > 0) {
-              const address = data.items[0].address;
-              const city = address.city ?? '';
-              const county = address.county ?? '';
+              const {city, county, countryCode} = data.items[0].address;
 
-              resolve({city, county});
+              resolve({city, county, countryCode});
             } else {
               reject(
                 new Error('No address found for the provided coordinates'),
