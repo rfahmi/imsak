@@ -35,10 +35,10 @@ const Countdown: React.FC<CountdownProps> = ({targetTime, message}) => {
 
   return (
     <View flex center>
-      <Text text70L black>
+      <Text text70L white>
         {message}
       </Text>
-      <Text text30L black>
+      <Text text30L white>
         {countdown}
       </Text>
     </View>

@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {useIsFocused} from '@react-navigation/native';
 import moment, {MomentInput} from 'moment';
 import React, {useCallback, useEffect, useRef, useState} from 'react';
@@ -21,14 +22,14 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native-ui-lib';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import {bg2} from '../assets';
 import Countdown from '../components/Countdown';
 import SholatTable from '../components/SholatTable';
 import {JadwalSholatResponse} from '../types/global.type';
 import {DATA_INIT} from '../utils/consts';
 import {getCityFromLocation} from '../utils/location';
 import {fillWeatherData, getCuacaBMKG} from '../utils/weather';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 const Home = () => {
   const isFocused = useIsFocused();
@@ -181,14 +182,13 @@ const Home = () => {
         backgroundColor="transparent"
       />
       <ImageBackground
-        source={{
-          uri: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1470&q=80',
-        }}
+        source={bg2}
         style={styles.backgroundImage}
         resizeMode="cover"
       />
       <View useSafeArea>
         <ScrollView
+          showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.contentContainer}
           refreshControl={
             <RefreshControl refreshing={loading} onRefresh={refresh} />
@@ -202,13 +202,13 @@ const Home = () => {
                     <Icon
                       name="navigation-variant"
                       size={18}
-                      color={Colors.grey20}
+                      color={Colors.grey60}
                     />
-                    <Text text60BO black>
+                    <Text text60BO white>
                       {currentCity}
                     </Text>
                   </View>
-                  <Text text80L black>
+                  <Text text80L white>
                     {todayString}
                   </Text>
                 </View>
@@ -217,7 +217,7 @@ const Home = () => {
                     Alert.alert('Stay tuned!', 'Feature coming soon')
                   }>
                   <View height={48} width={48} centerV right>
-                    <Icon name="cog" size={22} color={Colors.grey20} />
+                    <Icon name="cog" size={22} color={Colors.grey60} />
                   </View>
                 </TouchableOpacity>
               </View>
@@ -227,13 +227,13 @@ const Home = () => {
                     <Icon
                       name="weather-sunset-up"
                       size={18}
-                      color={Colors.grey20}
+                      color={Colors.grey60}
                     />
-                    <Text text70L black>
+                    <Text text70L white>
                       Imsak
                     </Text>
                   </View>
-                  <Text text30L black>
+                  <Text text30L white>
                     {moment(imsak).format('HH:mm')}
                   </Text>
                 </View>
@@ -242,13 +242,13 @@ const Home = () => {
                     <Icon
                       name="weather-sunset-down"
                       size={18}
-                      color={Colors.grey20}
+                      color={Colors.grey60}
                     />
-                    <Text text70L black>
+                    <Text text70L white>
                       Buka Puasa
                     </Text>
                   </View>
-                  <Text text30L black>
+                  <Text text30L white>
                     {moment(maghrib).format('HH:mm')}
                   </Text>
                 </View>

@@ -1,8 +1,9 @@
 import React from 'react';
 import {StyleSheet} from 'react-native';
-import {Card, Colors, ListItem, Text, View} from 'react-native-ui-lib';
-import {stringToProperCase} from '../utils/string';
+import {SquircleView} from 'react-native-figma-squircle';
+import {Colors, ListItem, Text, View} from 'react-native-ui-lib';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import {stringToProperCase} from '../utils/string';
 
 interface SholatTableProps {
   data: any[];
@@ -10,26 +11,20 @@ interface SholatTableProps {
 
 const SholatTable: React.FC<SholatTableProps> = ({data}) => {
   return (
-    <Card
-      marginT-20
-      padding-16
-      enableBlur
-      enableShadow
-      borderRadius={24}
-      elevation={10}>
+    <SquircleView
+      style={{flex: 1, padding: 24}}
+      squircleParams={{
+        cornerSmoothing: 1,
+        cornerRadius: 30,
+        fillColor: Colors.white,
+      }}>
       <Text text60BO marginB-10 black>
         Waktu Sholat
       </Text>
       {data &&
         data.map((item, index) => (
           <ListItem key={index} activeOpacity={0.3}>
-            <ListItem.Part
-              middle
-              row
-              containerStyle={{
-                borderBottomWidth: StyleSheet.hairlineWidth,
-                borderColor: Colors.grey50,
-              }}>
+            <ListItem.Part middle row>
               <ListItem.Part>
                 <Text flex grey10 text70 marginL-10 numberOfLines={1}>
                   {stringToProperCase(item.label)}
@@ -50,10 +45,8 @@ const SholatTable: React.FC<SholatTableProps> = ({data}) => {
             </ListItem.Part>
           </ListItem>
         ))}
-    </Card>
+    </SquircleView>
   );
 };
 
 export default SholatTable;
-
-const styles = StyleSheet.create({});
