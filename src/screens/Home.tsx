@@ -2,6 +2,7 @@ import {useIsFocused} from '@react-navigation/native';
 import moment, {MomentInput} from 'moment';
 import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {
+  Alert,
   AppState,
   BackHandler,
   Dimensions,
@@ -17,6 +18,7 @@ import {
   Dialog,
   PanningProvider,
   Text,
+  TouchableOpacity,
   View,
 } from 'react-native-ui-lib';
 import Countdown from '../components/Countdown';
@@ -193,20 +195,31 @@ const Home = () => {
           }>
           <View center width={'100%'} height={300}>
             <View flex center>
-              <View margin-16 center>
-                <View row center gap-8>
-                  <Icon
-                    name="navigation-variant"
-                    size={18}
-                    color={Colors.grey20}
-                  />
-                  <Text text60BO black>
-                    {currentCity}
+              <View row centerV spread>
+                <View height={48} width={48} centerV left />
+                <View flex margin-16 center>
+                  <View row center gap-8>
+                    <Icon
+                      name="navigation-variant"
+                      size={18}
+                      color={Colors.grey20}
+                    />
+                    <Text text60BO black>
+                      {currentCity}
+                    </Text>
+                  </View>
+                  <Text text80L black>
+                    {todayString}
                   </Text>
                 </View>
-                <Text text80L black>
-                  {todayString}
-                </Text>
+                <TouchableOpacity
+                  onPress={() =>
+                    Alert.alert('Stay tuned!', 'Feature coming soon')
+                  }>
+                  <View height={48} width={48} centerV right>
+                    <Icon name="cog" size={22} color={Colors.grey20} />
+                  </View>
+                </TouchableOpacity>
               </View>
               <View flex row>
                 <View flex center>
